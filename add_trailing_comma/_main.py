@@ -4,6 +4,7 @@ import argparse
 import sys
 from typing import Iterable
 from typing import Sequence
+from pathlib import Path
 
 from tokenize_rt import src_to_tokens
 from tokenize_rt import Token
@@ -15,6 +16,24 @@ from add_trailing_comma._data import visit
 from add_trailing_comma._token_helpers import find_simple
 from add_trailing_comma._token_helpers import fix_brace
 from add_trailing_comma._token_helpers import START_BRACES
+
+
+def _validate_filepathes(filenames: list[str]) -> list[str]:
+    valid_filenames = []
+    invalid_filenames = []
+    for path in [Path(path) for path in filenames]:
+        if path.is_dir():
+            files_py = [str(file) for file in path.glob('**/*.py')]
+            valid_filenames.extend(files_py)
+        elif path.is_file():
+            valid_filenames.append(str(path))
+        else:
+            invalid_filenames.append(str(path))
+
+    if len(invalid_filenames) > 0:
+        raise ValueError(f"Provided invalid file pathes: {invalid_filenames}")
+
+    return valid_filenames
 
 
 def _changing_list(lst: list[Token]) -> Iterable[tuple[int, Token]]:
@@ -93,8 +112,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.py35_plus or args.py36_plus:
         print('WARNING: --py35-plus / --py36-plus do nothing', file=sys.stderr)
 
+    filenames = _validate_filepathes(args.filenames)
     ret = 0
-    for filename in args.filenames:
+    for filename in filenames:
         ret |= fix_file(filename, args)
     return ret
 
